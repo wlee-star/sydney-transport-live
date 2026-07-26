@@ -4,15 +4,19 @@ Private Home Assistant custom integration for live **Transport for NSW** bus
 data. Built for a personal Home Assistant Green install; installable via HACS
 as a **custom repository**.
 
-## Features (v1)
+## Features
 
-- Live GPS positions for a configured bus route (default **311**)
-- Dynamic `device_tracker` entities for each active bus (Map Card)
-- Next-arrival sensor via the Trip Planner Departure API
+- Live GPS positions for route **311** (Map card via `geo_location`)
+- ETA timetable for both Rockwall Cres stops near **81 Macleay St**
+  (At Rockwall Cres → City, Opp Rockwall Cres → Central)
 - Active-bus count sensor
 - Config Flow with API key, route, stop, and direction
-- 12s vehicle polling / 30s departure polling (configurable)
-- Diagnostics, manual refresh, and static GTFS cache clear services
+- ~8s vehicle polling / 30s departure polling (configurable)
+- Diagnostics, refresh, cache clear, and purge-unavailable-trackers services
+
+> Home Assistant’s Map card cannot show a TripView-style timetable. Keep the
+> map for GPS pins and put the ETA markdown/tile cards underneath (see
+> [`lovelace/sydney_transport_live.yaml`](lovelace/sydney_transport_live.yaml)).
 
 ## Install with HACS (recommended)
 

@@ -141,8 +141,8 @@ class VehiclePositionCoordinator(DataUpdateCoordinator[dict[str, Vehicle]]):
         return retained
 
 
-class DepartureCoordinator(DataUpdateCoordinator[list[Arrival]]):
-    """Poll Trip Planner departure board for the configured stop."""
+class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
+    """Poll Trip Planner departure boards for one or more stops."""
 
     def __init__(
         self,
@@ -151,7 +151,7 @@ class DepartureCoordinator(DataUpdateCoordinator[list[Arrival]]):
         config_entry: ConfigEntry,
         client: TfnswApiClient,
         route: RouteConfig,
-        stop: StopConfig,
+        stops: list[StopConfig],
         update_interval_seconds: int,
     ) -> None:
         try:
@@ -172,25 +172,36 @@ class DepartureCoordinator(DataUpdateCoordinator[list[Arrival]]):
             )
         self.client = client
         self.route = route
-        self.stop = stop
+        self.stops = stops
 
-    async def _async_update_data(self) -> list[Arrival]:
-        # Trip Planner departure_mon usually resolves public stop codes cleanly.
-        stop_ref = self.stop.stop_code or self.stop.stop_id
-        if not stop_ref:
-            raise UpdateFailed("No stop_id configured for departures")
+    async def _async_update_data(self) -> dict[str, list[Arrival]]:
+        if not self.stops:
+            raise UpdateFailed("No stops configured for departures")
 
-        try:
-            payload = await self.client.async_get_departures(stop_ref)
-        except TfnswAuthError as err:
-            from homeassistant.exceptions import ConfigEntryAuthFailed
+        results: dict[str, list[Arrival]] = {}
+        errors: list[str] = []
 
-            raise ConfigEntryAuthFailed(str(err)) from err
-        except TfnswRateLimitError as err:
-            raise UpdateFailed(
-                f"Rate limited by TfNSW (retry after {err.retry_after or 60}s)"
-            ) from err
-        except Exception as err:
-            raise UpdateFailed(f"Error fetching departures: {err}") from err
+        for stop in self.stops:
+            stop_ref = stop.stop_code or stop.stop_id
+            if not stop_ref:
+                continue
+            key = stop.stop_code or stop.stop_id
+            try:
+                payload = await self.client.async_get_departures(stop_ref)
+                results[key] = parse_departures(payload, route=self.route)
+            except TfnswAuthError as err:
+                from homeassistant.exceptions import ConfigEntryAuthFailed
 
-        return parse_departures(payload, route=self.route)
+                raise ConfigEntryAuthFailed(str(err)) from err
+            except TfnswRateLimitError as err:
+                raise UpdateFailed(
+                    f"Rate limited by TfNSW (retry after {err.retry_after or 60}s)"
+                ) from err
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning("Departure fetch failed for stop %s: %s", stop_ref, err)
+                errors.append(f"{stop_ref}: {err}")
+                results[key] = []
+
+        if not results and errors:
+            raise UpdateFailed(f"Error fetching departures: {'; '.join(errors)}")
+        return results

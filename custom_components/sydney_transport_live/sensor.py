@@ -23,7 +23,7 @@ from .const import (
 from .coordinator import DepartureCoordinator, VehiclePositionCoordinator
 from .entity import SydneyTransportEntity
 from .helpers.entity_id import arrival_unique_id, status_unique_id
-from .models import RouteConfig, StopConfig
+from .models import Arrival, RouteConfig, StopConfig
 
 
 async def async_setup_entry(
@@ -33,23 +33,25 @@ async def async_setup_entry(
 ) -> None:
     """Set up arrival and status sensors."""
     runtime = entry.runtime_data
-    async_add_entities(
-        [
+    entities: list[SensorEntity] = [
+        ActiveBusesSensor(
+            runtime.position_coordinator,
+            runtime.route,
+        )
+    ]
+    for stop in runtime.stops:
+        entities.append(
             NextArrivalSensor(
                 runtime.departure_coordinator,
                 runtime.route,
-                runtime.stop,
-            ),
-            ActiveBusesSensor(
-                runtime.position_coordinator,
-                runtime.route,
-            ),
-        ]
-    )
+                stop,
+            )
+        )
+    async_add_entities(entities)
 
 
 class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
-    """Minutes until the next matching departure."""
+    """Minutes until the next matching departure at a stop."""
 
     _attr_translation_key = "next_arrival"
     _attr_icon = "mdi:bus-clock"
@@ -64,24 +66,29 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, route)
         self._stop = stop
+        self._stop_key = stop.stop_code or stop.stop_id
         self._attr_unique_id = arrival_unique_id(
-            stop.stop_id or stop.stop_code or "unknown",
+            self._stop_key or "unknown",
             route.short_name,
-            route.direction_id if route.direction_id is not None else route.direction_label,
+            stop.direction_label or stop.sensor_name or "all",
         )
-        self._attr_name = "Next arrival"
+        self._attr_name = stop.sensor_name or stop.stop_name or "Next arrival"
         self._attr_suggested_display_precision = 0
+
+    def _arrivals(self) -> list[Arrival]:
+        data = self.coordinator.data or {}
+        return list(data.get(self._stop_key, []))
 
     @property
     def native_value(self) -> StateType:
-        arrivals = self.coordinator.data or []
+        arrivals = self._arrivals()
         if not arrivals:
             return None
         return arrivals[0].minutes
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        arrivals = self.coordinator.data or []
+        arrivals = self._arrivals()
         first = arrivals[0] if arrivals else None
         last_update = None
         if self.coordinator.last_update_success and self.coordinator.last_update_success_time:
@@ -89,13 +96,16 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
         return {
             ATTR_ROUTE: self._route.short_name,
             ATTR_STOP_NAME: self._stop.stop_name,
-            ATTR_DIRECTION: self._route.direction_label,
+            ATTR_DIRECTION: self._stop.direction_label or self._route.direction_label,
             ATTR_ESTIMATED_ARRIVAL: (
                 first.estimated_arrival.isoformat()
                 if first and first.estimated_arrival
                 else None
             ),
             ATTR_ARRIVALS: [a.as_dict() for a in arrivals],
+            "eta_summary": ", ".join(
+                f"{a.minutes} min" for a in arrivals[:3] if a.minutes is not None
+            ),
             ATTR_LAST_UPDATE: last_update,
         }
 

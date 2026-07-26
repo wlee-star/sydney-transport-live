@@ -1,16 +1,69 @@
-# Live 311 map — bus markers come from geo_location_sources (auto, every day).
-# After updating to v1.1.1+, markers use a bus icon with "311" under it.
-#
-# Optional: if you use card-mod, the style block below shrinks markers further.
+# Sydney Transport Live dashboard
+# Map = live GPS. ETA timetable = separate cards (Map cannot show a timetable).
 
-type: map
-title: Live 311 · 81 Macleay St
-default_zoom: 14
-auto_fit: false
-hours_to_show: 0
-entities:
-  - entity: zone.macleay_st_home
-    name: Home
-geo_location_sources:
-  - source: sydney_transport_live
-    focus: false
+title: Sydney Transport
+views:
+  - title: Route 311
+    path: sydney-transport
+    icon: mdi:bus
+    cards:
+      - type: markdown
+        content: |
+          ## 311 · 81 Macleay St
+          Live map + ETAs for both Rockwall Cres stops.
+
+      - type: map
+        title: Live 311 · 81 Macleay St
+        default_zoom: 14
+        auto_fit: false
+        hours_to_show: 0
+        entities:
+          - entity: zone.macleay_st_home
+            name: Home
+        geo_location_sources:
+          - source: sydney_transport_live
+            focus: false
+
+      # ETA timetable (TripView-style) — separate from the map
+      - type: markdown
+        content: |
+          ### Macleay St At Rockwall Cres
+          → City · ~50 m from home
+
+          {% set arrivals = state_attr('sensor.route_311_at_rockwall_cres', 'arrivals') or [] %}
+          {% if arrivals %}
+          {% for a in arrivals[:3] %}
+          **311** — {{ a.minutes }} min{% if a.destination %} · {{ a.destination }}{% endif %}
+          {% endfor %}
+          {% else %}
+          _No departures right now_
+          {% endif %}
+
+          ---
+
+          ### Macleay St Opp Rockwall Cres
+          → Central · ~90 m from home
+
+          {% set arrivals = state_attr('sensor.route_311_opp_rockwall_cres', 'arrivals') or [] %}
+          {% if arrivals %}
+          {% for a in arrivals[:3] %}
+          **311** — {{ a.minutes }} min{% if a.destination %} · {{ a.destination }}{% endif %}
+          {% endfor %}
+          {% else %}
+          _No departures right now_
+          {% endif %}
+
+      - type: horizontal-stack
+        cards:
+          - type: tile
+            entity: sensor.route_311_at_rockwall_cres
+            name: Next · City
+            icon: mdi:bus-clock
+          - type: tile
+            entity: sensor.route_311_opp_rockwall_cres
+            name: Next · Central
+            icon: mdi:bus-clock
+          - type: tile
+            entity: sensor.route_311_active_buses
+            name: Active buses
+            icon: mdi:bus-multiple

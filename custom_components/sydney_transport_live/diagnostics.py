@@ -40,6 +40,16 @@ async def async_get_config_entry_diagnostics(
             "latitude": runtime.stop.latitude,
             "longitude": runtime.stop.longitude,
         },
+        "stops": [
+            {
+                "stop_id": s.stop_id,
+                "stop_name": s.stop_name,
+                "stop_code": s.stop_code,
+                "direction_label": s.direction_label,
+                "sensor_name": s.sensor_name,
+            }
+            for s in runtime.stops
+        ],
         "static_gtfs": runtime.static_store.diagnostics(),
         "position_coordinator": {
             "last_update_success": position.last_update_success,
@@ -57,8 +67,10 @@ async def async_get_config_entry_diagnostics(
             "last_exception": (
                 str(departure.last_exception) if departure.last_exception else None
             ),
-            "arrival_count": len(departure.data or []),
-            "arrivals": [a.as_dict() for a in (departure.data or [])],
+            "stops": {
+                key: [a.as_dict() for a in arrivals]
+                for key, arrivals in (departure.data or {}).items()
+            },
             "update_interval": (
                 departure.update_interval.total_seconds()
                 if departure.update_interval

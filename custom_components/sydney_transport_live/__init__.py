@@ -23,6 +23,7 @@ from .const import (
     CONF_STOP_CODE,
     CONF_STOP_ID,
     CONF_STOP_NAME,
+    CURATED_STOPS,
     DEFAULT_DEPARTURE_INTERVAL,
     DEFAULT_DIRECTION_LABEL,
     DEFAULT_POSITION_INTERVAL,
@@ -49,6 +50,7 @@ class SydneyTransportRuntimeData:
     departure_coordinator: DepartureCoordinator
     route: RouteConfig
     stop: StopConfig
+    stops: list[StopConfig]
 
 
 async def async_setup_entry(
@@ -119,13 +121,50 @@ async def async_setup_entry(
             stop_code=resolved_stop.stop_code,
             latitude=resolved_stop.latitude,
             longitude=resolved_stop.longitude,
+            direction_label=direction_label,
+            sensor_name="Next arrival",
         )
     else:
         stop = StopConfig(
             stop_id=stop_id or (stop_code or ""),
             stop_name=stop_name,
             stop_code=stop_code,
+            direction_label=direction_label,
+            sensor_name="Next arrival",
         )
+
+    # Always include both Potts Point Rockwall Cres stops for the ETA timetable.
+    stops: list[StopConfig] = []
+    seen_codes: set[str] = set()
+    for seed in CURATED_STOPS:
+        code = seed["stop_code"]
+        resolved = static_store.find_stop_by_code(code)
+        if resolved is not None:
+            stops.append(
+                StopConfig(
+                    stop_id=resolved.stop_id,
+                    stop_name=resolved.stop_name,
+                    stop_code=resolved.stop_code or code,
+                    latitude=resolved.latitude,
+                    longitude=resolved.longitude,
+                    direction_label=seed.get("direction_label", ""),
+                    sensor_name=seed.get("sensor_name", resolved.stop_name),
+                )
+            )
+        else:
+            stops.append(
+                StopConfig(
+                    stop_id=code,
+                    stop_name=seed["name"],
+                    stop_code=code,
+                    direction_label=seed.get("direction_label", ""),
+                    sensor_name=seed.get("sensor_name", seed["name"]),
+                )
+            )
+        seen_codes.add(code)
+
+    if stop.stop_code and stop.stop_code not in seen_codes:
+        stops.append(stop)
 
     position_coordinator = VehiclePositionCoordinator(
         hass=hass,
@@ -140,7 +179,7 @@ async def async_setup_entry(
         config_entry=entry,
         client=client,
         route=route,
-        stop=stop,
+        stops=stops,
         update_interval_seconds=int(departure_seconds),
     )
 
@@ -154,6 +193,7 @@ async def async_setup_entry(
         departure_coordinator=departure_coordinator,
         route=route,
         stop=stop,
+        stops=stops,
     )
 
     await hass.config_entries.async_forward_entry_setups(

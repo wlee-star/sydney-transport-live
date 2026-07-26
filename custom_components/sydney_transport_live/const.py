@@ -29,11 +29,15 @@ CURATED_STOPS: Final[tuple[dict[str, str], ...]] = (
         "stop_code": "201152",
         "name": "Macleay St at Rockwall Cres",
         "hint": "CBD / City direction (preferred)",
+        "direction_label": "→ City",
+        "sensor_name": "At Rockwall Cres",
     },
     {
         "stop_code": "201153",
         "name": "Macleay St Opp Rockwall Cres",
         "hint": "Opposite side of street",
+        "direction_label": "→ Central",
+        "sensor_name": "Opp Rockwall Cres",
     },
 )
 

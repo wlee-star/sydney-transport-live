@@ -16,6 +16,8 @@ class StopConfig:
     stop_code: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    direction_label: str = ""
+    sensor_name: str = "Next arrival"
 
 
 @dataclass(slots=True)
