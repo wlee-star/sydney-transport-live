@@ -87,7 +87,8 @@ class SydneyBusTracker(SydneyTransportEntity, TrackerEntity):
         super().__init__(coordinator, route)
         self._vehicle_id = vehicle_id
         self._attr_unique_id = bus_unique_id(vehicle_id)
-        self._attr_name = f"{route.short_name} {vehicle_id}"
+        # Short map-friendly name (avoid fleet codes like "R33").
+        self._attr_name = route.short_name
         self._attr_force_update = True
 
     @property
