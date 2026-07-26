@@ -77,7 +77,7 @@ def parse_vehicle_positions(
         if route_id and feed_route_short is None:
             feed_route_short = static_store.route_short_name(route_id)
 
-        if not _matches_route(route, route_id, feed_route_short):
+        if not _matches_route(route, route_id=route_id, feed_route_short=feed_route_short, trip_id=trip_id):
             continue
         if not _matches_direction(route, direction_id, headsign, static_store, trip_id):
             continue
@@ -138,7 +138,8 @@ def parse_vehicle_positions(
     )
     if total and matched == 0:
         _LOGGER.warning(
-            "No vehicles matched route=%s (route_ids=%s). Check static GTFS / direction filter.",
+            "No vehicles matched route=%s (known route_ids=%s). "
+            "If this persists, check logs for sample route_id values and reload after static GTFS loads.",
             route.short_name,
             sorted(route.route_ids)[:5],
         )
@@ -155,10 +156,29 @@ def _vehicle_id(vp: object, entity_id: str) -> str | None:
     return None
 
 
+def _route_number_in_id(route_short_name: str, value: str | None) -> bool:
+    """Match public route number as a hyphen/underscore-bounded token.
+
+    TfNSW bus route_ids look like ``2449_311`` (contract_route), not ``30-311-…``.
+    """
+    if not value:
+        return False
+    return (
+        re.search(
+            rf"(^|[-_]){re.escape(route_short_name)}([-_]|$)",
+            value,
+            flags=re.IGNORECASE,
+        )
+        is not None
+    )
+
+
 def _matches_route(
     route: RouteConfig,
+    *,
     route_id: str | None,
     feed_route_short: str | None,
+    trip_id: str | None = None,
 ) -> bool:
     """Return True only when the feed vehicle is actually on the configured route."""
     wanted = route.short_name.upper()
@@ -169,12 +189,11 @@ def _matches_route(
     if route.route_ids and route_id and route_id in route.route_ids:
         return True
 
-    if not route_id:
-        return False
+    if _route_number_in_id(route.short_name, route_id):
+        return True
 
-    # TfNSW bus route_ids typically look like "30-311-sj2-1".
-    # Match the public number as a hyphen-bounded token only.
-    if re.search(rf"(^|-){re.escape(route.short_name)}(-|$)", route_id, flags=re.IGNORECASE):
+    # Some vehiclepos messages omit route_id but encode it in trip_id.
+    if _route_number_in_id(route.short_name, trip_id):
         return True
 
     return False
