@@ -1,0 +1,59 @@
+# Sydney Transport Live — Lovelace dashboard snippet
+# Paste into a new dashboard view (raw config) or merge into an existing view.
+#
+# After installing the integration, open Developer Tools → States, filter
+# device_tracker for your bus entities, and add them under the map card.
+
+title: Sydney Transport
+views:
+  - title: Route 311
+    path: sydney-transport
+    icon: mdi:bus
+    cards:
+      - type: markdown
+        content: |
+          ## 311 · Macleay St → CBD
+          Live buses and next arrivals from Transport for NSW.
+
+      - type: horizontal-stack
+        cards:
+          - type: tile
+            entity: sensor.route_311_next_arrival
+            name: Next bus
+            icon: mdi:bus-clock
+          - type: tile
+            entity: sensor.route_311_active_buses
+            name: Active buses
+            icon: mdi:bus-multiple
+
+      - type: map
+        auto_fit: true
+        default_zoom: 14
+        entities: []
+        # Add live buses, for example:
+        # - device_tracker.route_311_bus_1234
+
+      - type: entities
+        title: Next arrival detail
+        show_header_toggle: false
+        entities:
+          - entity: sensor.route_311_next_arrival
+            name: Minutes away
+          - type: attribute
+            entity: sensor.route_311_next_arrival
+            attribute: estimated_arrival
+            name: Estimated arrival
+          - type: attribute
+            entity: sensor.route_311_next_arrival
+            attribute: stop_name
+            name: Stop
+          - type: attribute
+            entity: sensor.route_311_next_arrival
+            attribute: direction
+            name: Direction
+
+      - type: markdown
+        content: |
+          **Map tip:** If no buses are running, centre manually on Potts Point
+          (`-33.871`, `151.225`). Use **Developer Tools → States** to find
+          `device_tracker.route_311_bus_*` entities and add them to the Map card.
