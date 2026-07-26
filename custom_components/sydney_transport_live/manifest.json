@@ -7,5 +7,5 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "requirements": ["gtfs-realtime-bindings==1.0.0"],
-  "version": "1.0.3"
+  "version": "1.0.4"
 }

@@ -84,7 +84,15 @@ async def async_setup_entry(
     )
 
     static_store = GtfsStaticStore(hass=hass, client=client)
-    await static_store.async_ensure_loaded(route_short_name=route_short_name)
+    try:
+        await static_store.async_ensure_loaded(route_short_name=route_short_name)
+    except Exception as err:  # noqa: BLE001
+        # Schedule ZIP is large; allow the integration to start and filter
+        # live vehicles by route short name / route_id patterns instead.
+        _LOGGER.warning(
+            "Static GTFS not available yet (%s). Continuing with live-feed filters.",
+            err,
+        )
 
     route_ids = static_store.route_ids_for_short_name(route_short_name)
     route = RouteConfig(

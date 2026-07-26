@@ -14,7 +14,7 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api.client import TfnswApiClient, normalize_api_key
-from .api.static_gtfs import GtfsStaticStore, async_resolve_route_defaults
+from .api.static_gtfs import GtfsStaticStore
 from .const import (
     CONF_API_KEY,
     CONF_DEPARTURE_INTERVAL,
@@ -25,6 +25,7 @@ from .const import (
     CONF_STOP_CODE,
     CONF_STOP_ID,
     CONF_STOP_NAME,
+    CURATED_STOPS,
     DEFAULT_DEPARTURE_INTERVAL,
     DEFAULT_DIRECTION_LABEL,
     DEFAULT_POSITION_INTERVAL,
@@ -113,34 +114,39 @@ class SydneyTransportLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_route(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Select route short name (default 311)."""
+        """Select route short name (default 311).
+
+        Static GTFS is intentionally NOT downloaded here — the buses schedule
+        ZIP is large and was causing cannot_connect during setup on HA Green.
+        Curated defaults are used; GTFS is fetched later during entry setup.
+        """
         errors: dict[str, str] = {}
 
         if user_input is not None:
             self._route_short_name = normalize_route_short_name(
                 user_input[CONF_ROUTE_SHORT_NAME]
             )
-            assert self._api_key is not None
-            session = async_get_clientsession(self.hass)
-            client = TfnswApiClient(session=session, api_key=self._api_key)
-            try:
-                resolved = await async_resolve_route_defaults(
-                    self.hass, client, self._route_short_name
-                )
-            except TfnswAuthError:
-                errors["base"] = "invalid_auth"
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Failed to load static GTFS")
-                errors["base"] = "cannot_connect"
+            if not self._route_short_name:
+                errors["base"] = "route_not_found"
             else:
-                self._store = resolved["store"]
-                self._directions = resolved["directions"]
-                self._preferred_direction_id = resolved["preferred_direction_id"]
-                self._curated_stops = resolved["curated_stops"]
-                if not resolved["route_ids"]:
-                    errors["base"] = "route_not_found"
-                else:
-                    return await self.async_step_stop()
+                # Seed curated Potts Point stops without needing the schedule ZIP.
+                from .models import StopInfo
+
+                self._store = None
+                self._curated_stops = [
+                    StopInfo(
+                        stop_id=seed["stop_code"],
+                        stop_name=seed["name"],
+                        stop_code=seed["stop_code"],
+                    )
+                    for seed in CURATED_STOPS
+                ]
+                self._directions = [
+                    (0, DEFAULT_DIRECTION_LABEL),
+                    (1, "Opposite direction"),
+                ]
+                self._preferred_direction_id = 0
+                return await self.async_step_stop()
 
         schema = vol.Schema(
             {

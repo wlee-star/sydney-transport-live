@@ -161,6 +161,14 @@ def _matches_route(
         return True
     if route_id and static_store.route_short_name(route_id) == route.short_name:
         return True
+    # TfNSW bus route_ids often embed the public number, e.g. "30-311-sj2-1".
+    if route_id:
+        token = f"-{route.short_name}-"
+        if token in route_id or route_id.endswith(f"-{route.short_name}"):
+            return True
+        # Some feeds put short name before the first hyphen.
+        if route_id.split("-")[0].upper() == route.short_name.upper():
+            return True
     return False
 
 
