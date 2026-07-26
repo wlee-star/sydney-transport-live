@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Transport for NSW API key",
-        "description": "Create an API token at the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) and paste it below.",
+        "description": "Create an API token at the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) (Profile → API Tokens). Paste **only the token** — do not include the word `apikey`.",
         "data": {
           "api_key": "API key"
         }
@@ -43,9 +43,9 @@
       }
     },
     "error": {
-      "invalid_auth": "Invalid API key. Check the token from the Open Data Hub.",
-      "cannot_connect": "Could not reach the TfNSW API. Try again shortly.",
-      "unknown": "Unexpected error. Check Home Assistant logs.",
+      "invalid_auth": "Invalid API key (401/403). Create a new token under Profile → API Tokens, and paste only the token value.",
+      "cannot_connect": "Could not reach api.transport.nsw.gov.au. Check Home Assistant internet access, then retry. Details are in the HA log under sydney_transport_live.",
+      "unknown": "Unexpected error. Check Home Assistant logs for sydney_transport_live.",
       "route_not_found": "That route number was not found in the buses GTFS bundle.",
       "invalid_stop": "Could not resolve that stop.",
       "interval_too_low": "Interval is below the allowed minimum."

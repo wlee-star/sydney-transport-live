@@ -178,22 +178,63 @@ class TfnswApiClient:
         return data
 
     async def async_validate_api_key(self) -> None:
-        """Validate the API key with a lightweight stop_finder call."""
-        params = {
-            "outputFormat": "rapidJSON",
-            "type_sf": "any",
-            "name_sf": "Macleay",
-            "TfNSWSF": "true",
-            "version": "10.2.1.42",
-        }
-        await self._request(
-            ENDPOINT_STOP_FINDER,
-            params=params,
-            timeout=10.0,
-            expect_json=True,
-        )
+        """Validate the API key against the buses vehicle-positions feed.
+
+        Reads only a small response prefix so setup stays fast.
+        """
+        url = self._url(ENDPOINT_VEHICLE_POS)
+        try:
+            async with asyncio.timeout(20.0):
+                async with self._session.get(url, headers=self._headers) as response:
+                    if response.status in (401, 403):
+                        body = await response.text()
+                        _LOGGER.error(
+                            "TfNSW auth failed during validation (%s): %s",
+                            response.status,
+                            body[:300],
+                        )
+                        raise TfnswAuthError(
+                            f"TfNSW authentication failed ({response.status})"
+                        )
+                    if response.status == 429:
+                        raise TfnswRateLimitError(retry_after=60)
+                    if response.status >= 400:
+                        body = await response.text()
+                        _LOGGER.error(
+                            "TfNSW validation error (%s): %s",
+                            response.status,
+                            body[:300],
+                        )
+                        raise TfnswApiError(
+                            f"TfNSW API error {response.status}: {body[:200]}",
+                            status=response.status,
+                        )
+                    # Auth OK — discard the rest of the payload.
+                    await response.content.read(64)
+                    _LOGGER.debug("TfNSW API key validated via vehiclepos/buses")
+        except TfnswAuthError:
+            raise
+        except TfnswRateLimitError:
+            raise
+        except TfnswApiError:
+            raise
+        except TimeoutError as err:
+            _LOGGER.error("TfNSW validation timed out contacting %s", url)
+            raise TfnswApiError("Timed out contacting TfNSW API") from err
+        except aiohttp.ClientError as err:
+            _LOGGER.error("TfNSW validation connection error: %s", err)
+            raise TfnswApiError(f"Could not connect to TfNSW API: {err}") from err
 
     def describe_request(self, path: str, params: dict[str, Any] | None = None) -> str:
         """Return a redacted URL description for diagnostics."""
         query = f"?{urlencode(params)}" if params else ""
         return f"{self._url(path)}{query}"
+
+
+def normalize_api_key(value: str) -> str:
+    """Strip whitespace and an accidental 'apikey ' prefix from user input."""
+    key = value.strip().strip('"').strip("'")
+    lower = key.lower()
+    if lower.startswith("apikey "):
+        key = key[7:].strip()
+    return key

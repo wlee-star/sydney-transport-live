@@ -13,7 +13,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api.client import TfnswApiClient
+from .api.client import TfnswApiClient, normalize_api_key
 from .api.static_gtfs import GtfsStaticStore, async_resolve_route_defaults
 from .const import (
     CONF_API_KEY,
@@ -78,21 +78,26 @@ class SydneyTransportLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            api_key = user_input[CONF_API_KEY].strip()
-            try:
-                await _validate_api_key(self.hass, api_key)
-            except TfnswAuthError:
+            api_key = normalize_api_key(user_input[CONF_API_KEY])
+            if not api_key:
                 errors["base"] = "invalid_auth"
-            except TfnswError:
-                errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Unexpected error validating TfNSW API key")
-                errors["base"] = "unknown"
             else:
-                self._api_key = api_key
-                if self._reauth_entry:
-                    return await self._async_finish_reauth()
-                return await self.async_step_route()
+                try:
+                    await _validate_api_key(self.hass, api_key)
+                except TfnswAuthError:
+                    _LOGGER.warning("TfNSW API key rejected during config flow")
+                    errors["base"] = "invalid_auth"
+                except TfnswError as err:
+                    _LOGGER.warning("TfNSW connect error during config flow: %s", err)
+                    errors["base"] = "cannot_connect"
+                except Exception:  # noqa: BLE001
+                    _LOGGER.exception("Unexpected error validating TfNSW API key")
+                    errors["base"] = "unknown"
+                else:
+                    self._api_key = api_key
+                    if self._reauth_entry:
+                        return await self._async_finish_reauth()
+                    return await self.async_step_route()
 
         return self.async_show_form(
             step_id="user",
