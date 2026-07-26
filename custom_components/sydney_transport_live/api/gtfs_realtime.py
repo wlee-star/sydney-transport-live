@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -58,7 +59,8 @@ def parse_vehicle_positions(
         trip_id = trip.trip_id if trip and trip.trip_id else None
         direction_id: int | None = None
         headsign: str | None = None
-        route_short = route.short_name
+        # Never default this to the configured route — that made every bus match.
+        feed_route_short: str | None = None
 
         if trip is not None and trip.HasField("direction_id"):
             direction_id = int(trip.direction_id)
@@ -70,9 +72,12 @@ def parse_vehicle_positions(
                 direction_id = trip_info.direction_id
             headsign = trip_info.headsign
             if trip_info.route_short_name:
-                route_short = trip_info.route_short_name
+                feed_route_short = trip_info.route_short_name
 
-        if not _matches_route(route, route_id, route_short, static_store):
+        if route_id and feed_route_short is None:
+            feed_route_short = static_store.route_short_name(route_id)
+
+        if not _matches_route(route, route_id, feed_route_short):
             continue
         if not _matches_direction(route, direction_id, headsign, static_store, trip_id):
             continue
@@ -109,7 +114,7 @@ def parse_vehicle_positions(
             vehicle_id=vehicle_id,
             latitude=float(lat),
             longitude=float(lon),
-            route=route_short,
+            route=route.short_name,
             trip_id=trip_id,
             route_id=route_id,
             direction_id=direction_id,
@@ -123,12 +128,13 @@ def parse_vehicle_positions(
         )
         matched += 1
 
-    _LOGGER.debug(
-        "Vehicle feed: %s entities, %s matched route=%s direction=%s",
+    _LOGGER.info(
+        "Vehicle feed: %s entities, %s matched route=%s direction=%s route_ids=%s",
         total,
         matched,
         route.short_name,
         route.direction_id,
+        len(route.route_ids),
     )
     if total and matched == 0:
         _LOGGER.warning(
@@ -152,23 +158,25 @@ def _vehicle_id(vp: object, entity_id: str) -> str | None:
 def _matches_route(
     route: RouteConfig,
     route_id: str | None,
-    route_short: str | None,
-    static_store: GtfsStaticStore,
+    feed_route_short: str | None,
 ) -> bool:
+    """Return True only when the feed vehicle is actually on the configured route."""
+    wanted = route.short_name.upper()
+
+    if feed_route_short and feed_route_short.upper() == wanted:
+        return True
+
     if route.route_ids and route_id and route_id in route.route_ids:
         return True
-    if route_short and route_short.upper() == route.short_name.upper():
+
+    if not route_id:
+        return False
+
+    # TfNSW bus route_ids typically look like "30-311-sj2-1".
+    # Match the public number as a hyphen-bounded token only.
+    if re.search(rf"(^|-){re.escape(route.short_name)}(-|$)", route_id, flags=re.IGNORECASE):
         return True
-    if route_id and static_store.route_short_name(route_id) == route.short_name:
-        return True
-    # TfNSW bus route_ids often embed the public number, e.g. "30-311-sj2-1".
-    if route_id:
-        token = f"-{route.short_name}-"
-        if token in route_id or route_id.endswith(f"-{route.short_name}"):
-            return True
-        # Some feeds put short name before the first hyphen.
-        if route_id.split("-")[0].upper() == route.short_name.upper():
-            return True
+
     return False
 
 
@@ -183,12 +191,13 @@ def _matches_direction(
         return True
     if direction_id is not None:
         return direction_id == route.direction_id
-    # Fall back to headsign heuristics if direction missing from feed.
     if headsign and static_store.headsign_matches_direction(headsign, route.direction_label):
         return True
     if trip_id:
         info = static_store.get_trip(trip_id)
         if info and info.direction_id is not None:
             return info.direction_id == route.direction_id
-    # If we cannot determine direction, include the vehicle (better than empty map).
-    return direction_id is None
+    # Unknown direction with a filter configured: keep the bus so a missing
+    # direction_id does not wipe a correct route match. Route filter is the
+    # important gate; direction can be refined once static GTFS is loaded.
+    return True
