@@ -33,7 +33,6 @@ _LOGGER = logging.getLogger(__name__)
 
 # Map card: geo_location_sources: [sydney_transport_live]
 SOURCE = DOMAIN
-_DEFAULT_MARKER = f"/local/{DOMAIN}/marker_311.svg"
 
 
 async def async_setup_entry(
@@ -45,7 +44,6 @@ async def async_setup_entry(
     runtime = entry.runtime_data
     coordinator: VehiclePositionCoordinator = runtime.position_coordinator
     route: RouteConfig = runtime.route
-    marker_url = hass.data.get(DOMAIN, {}).get("marker_url", _DEFAULT_MARKER)
     entities: dict[str, SydneyBusGeoLocation] = {}
 
     @callback
@@ -54,7 +52,7 @@ async def async_setup_entry(
         for vid in vehicle_ids:
             if vid in entities:
                 continue
-            entity = SydneyBusGeoLocation(coordinator, route, vid, marker_url)
+            entity = SydneyBusGeoLocation(coordinator, route, vid)
             entities[vid] = entity
             new_entities.append(entity)
         if new_entities:
@@ -93,7 +91,6 @@ class SydneyBusGeoLocation(GeolocationEvent):
         coordinator: VehiclePositionCoordinator,
         route: RouteConfig,
         vehicle_id: str,
-        marker_url: str,
     ) -> None:
         self.coordinator = coordinator
         self._route = route
@@ -101,7 +98,6 @@ class SydneyBusGeoLocation(GeolocationEvent):
         self._attr_unique_id = f"{bus_unique_id(vehicle_id)}_geo"
         # Spaced digits so HA map initials render as "311" (not "3").
         self._attr_name = " ".join(route.short_name)
-        self._attr_entity_picture = marker_url
         self._attr_force_update = True
 
     async def async_added_to_hass(self) -> None:
