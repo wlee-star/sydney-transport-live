@@ -1,0 +1,15 @@
+{
+  "device_tracker": {
+    "bus": {
+      "default": "mdi:bus"
+    }
+  },
+  "sensor": {
+    "next_arrival": {
+      "default": "mdi:bus-clock"
+    },
+    "active_buses": {
+      "default": "mdi:bus-multiple"
+    }
+  }
+}

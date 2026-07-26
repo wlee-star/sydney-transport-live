@@ -1,0 +1,20 @@
+refresh:
+  name: Refresh
+  description: Request an immediate refresh of vehicle positions and departures.
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Optional. Limit the refresh to one config entry.
+      example: "01ABCDEF..."
+      selector:
+        text:
+clear_cache:
+  name: Clear GTFS cache
+  description: Delete the cached static buses GTFS ZIP and download it again.
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Optional. Limit the cache clear to one config entry.
+      example: "01ABCDEF..."
+      selector:
+        text:

@@ -1,0 +1,11 @@
+{
+  "domain": "sydney_transport_live",
+  "name": "Sydney Transport Live",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://opendata.transport.nsw.gov.au/developers/documentation",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "requirements": ["gtfs-realtime-bindings==1.0.0"],
+  "version": "1.0.0"
+}

@@ -7,6 +7,6 @@ venv/
 .env
 *.log
 
-# HA runtime cache if someone runs tools from this tree
-sydney_transport_live/
+# HA runtime cache (config path), not the integration package
+/sydney_transport_live/
 .storage/

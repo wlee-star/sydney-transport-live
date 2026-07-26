@@ -1,0 +1,115 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Transport for NSW API key",
+        "description": "Create an API token at the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) and paste it below.",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "route": {
+        "title": "Bus route",
+        "description": "Enter the public route number. Default is 311 (Potts Point / CBD).",
+        "data": {
+          "route_short_name": "Route number"
+        }
+      },
+      "stop": {
+        "title": "Bus stop",
+        "description": "Choose a curated Potts Point stop, or enter a custom stop ID.",
+        "data": {
+          "stop_choice": "Stop"
+        }
+      },
+      "custom_stop": {
+        "title": "Custom stop",
+        "description": "Enter a GTFS stop_id or public stop code.",
+        "data": {
+          "stop_id": "Stop ID or code",
+          "stop_name": "Display name"
+        }
+      },
+      "direction": {
+        "title": "Travel direction",
+        "description": "Filter live buses and arrivals by direction. Prefer Sydney CBD for Macleay St toward the city.",
+        "data": {
+          "direction_id": "Direction"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "The TfNSW API key is no longer valid. Enter a new key."
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid API key. Check the token from the Open Data Hub.",
+      "cannot_connect": "Could not reach the TfNSW API. Try again shortly.",
+      "unknown": "Unexpected error. Check Home Assistant logs.",
+      "route_not_found": "That route number was not found in the buses GTFS bundle.",
+      "invalid_stop": "Could not resolve that stop.",
+      "interval_too_low": "Interval is below the allowed minimum."
+    },
+    "abort": {
+      "already_configured": "This route, stop, and direction are already configured.",
+      "reauth_successful": "API key updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sydney Transport Live options",
+        "description": "Adjust route, stop, direction, and polling intervals. Position interval minimum is 10s; departure minimum is 20s.",
+        "data": {
+          "route_short_name": "Route number",
+          "stop_id": "Stop ID",
+          "stop_name": "Stop name",
+          "direction_id": "Direction ID (0 or 1)",
+          "direction_label": "Direction label",
+          "position_interval": "Vehicle position interval",
+          "departure_interval": "Departure board interval"
+        }
+      }
+    },
+    "error": {
+      "interval_too_low": "Interval is below the allowed minimum."
+    }
+  },
+  "entity": {
+    "device_tracker": {
+      "bus": {
+        "name": "Bus"
+      }
+    },
+    "sensor": {
+      "next_arrival": {
+        "name": "Next arrival"
+      },
+      "active_buses": {
+        "name": "Active buses"
+      }
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Refresh",
+      "description": "Request an immediate refresh of vehicle positions and departures.",
+      "fields": {
+        "entry_id": {
+          "name": "Config entry ID",
+          "description": "Optional. Limit the refresh to one config entry."
+        }
+      }
+    },
+    "clear_cache": {
+      "name": "Clear GTFS cache",
+      "description": "Delete the cached static buses GTFS ZIP and download it again.",
+      "fields": {
+        "entry_id": {
+          "name": "Config entry ID",
+          "description": "Optional. Limit the cache clear to one config entry."
+        }
+      }
+    }
+  }
+}
