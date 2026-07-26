@@ -1,55 +1,16 @@
-# Sydney Transport Live — Lovelace dashboard
+# Live 311 map — bus markers come from geo_location_sources (auto, every day).
+# After updating to v1.1.1+, markers use a bus icon with "311" under it.
 #
-# IMPORTANT: Do NOT hard-code individual device_tracker bus IDs.
-# Buses change all day; use geo_location_sources so every live 311 appears
-# automatically whenever it is on the road.
+# Optional: if you use card-mod, the style block below shrinks markers further.
 
-title: Sydney Transport
-views:
-  - title: Route 311
-    path: sydney-transport
-    icon: mdi:bus
-    cards:
-      - type: markdown
-        content: |
-          ## 311 · 81 Macleay St
-          All live Route 311 buses update automatically.
-
-      - type: horizontal-stack
-        cards:
-          - type: tile
-            entity: sensor.route_311_next_arrival
-            name: Next bus
-            icon: mdi:bus-clock
-          - type: tile
-            entity: sensor.route_311_active_buses
-            name: Active buses
-            icon: mdi:bus-multiple
-
-      # Fixed on 81 Macleay Street — buses come from geo_location_sources
-      - type: map
-        title: Live 311 · 81 Macleay St
-        default_zoom: 14
-        auto_fit: false
-        hours_to_show: 0
-        entities:
-          - entity: zone.macleay_st_home
-            name: Home
-        geo_location_sources:
-          - source: sydney_transport_live
-            focus: false
-
-      - type: entities
-        title: Next arrival
-        show_header_toggle: false
-        entities:
-          - entity: sensor.route_311_next_arrival
-            name: Minutes away
-          - type: attribute
-            entity: sensor.route_311_next_arrival
-            attribute: estimated_arrival
-            name: Estimated arrival
-          - type: attribute
-            entity: sensor.route_311_next_arrival
-            attribute: stop_name
-            name: Stop
+type: map
+title: Live 311 · 81 Macleay St
+default_zoom: 14
+auto_fit: false
+hours_to_show: 0
+entities:
+  - entity: zone.macleay_st_home
+    name: Home
+geo_location_sources:
+  - source: sydney_transport_live
+    focus: false

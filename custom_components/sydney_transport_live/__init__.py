@@ -12,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api.client import TfnswApiClient
 from .api.static_gtfs import GtfsStaticStore
+from .assets_manager import install_map_assets
 from .const import (
     CONF_API_KEY,
     CONF_DEPARTURE_INTERVAL,
@@ -93,6 +94,9 @@ async def async_setup_entry(
             "Static GTFS not available yet (%s). Continuing with live-feed filters.",
             err,
         )
+
+    marker_url = await hass.async_add_executor_job(install_map_assets, hass)
+    hass.data.setdefault(DOMAIN, {})["marker_url"] = marker_url
 
     route_ids = static_store.route_ids_for_short_name(route_short_name)
     route = RouteConfig(
