@@ -110,6 +110,16 @@
           "description": "Optional. Limit the cache clear to one config entry."
         }
       }
+    },
+    "purge_unavailable_trackers": {
+      "name": "Purge unavailable bus trackers",
+      "description": "Bulk-remove leftover unavailable/unknown bus device_tracker entities.",
+      "fields": {
+        "include_unknown": {
+          "name": "Include unknown",
+          "description": "Also remove entities in the unknown state."
+        }
+      }
     }
   }
 }

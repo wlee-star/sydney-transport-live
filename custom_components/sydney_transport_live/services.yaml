@@ -18,3 +18,13 @@ clear_cache:
       example: "01ABCDEF..."
       selector:
         text:
+purge_unavailable_trackers:
+  name: Purge unavailable bus trackers
+  description: Remove leftover unavailable/unknown Route bus device_tracker entities from the entity registry (bulk cleanup).
+  fields:
+    include_unknown:
+      name: Include unknown
+      description: Also remove entities in the unknown state.
+      default: true
+      selector:
+        boolean:
