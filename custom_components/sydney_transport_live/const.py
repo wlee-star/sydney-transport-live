@@ -37,9 +37,9 @@ CURATED_STOPS: Final[tuple[dict[str, str], ...]] = (
     },
 )
 
-DEFAULT_POSITION_INTERVAL: Final = timedelta(seconds=12)
+DEFAULT_POSITION_INTERVAL: Final = timedelta(seconds=8)
 DEFAULT_DEPARTURE_INTERVAL: Final = timedelta(seconds=30)
-MIN_POSITION_INTERVAL_SECONDS: Final = 10
+MIN_POSITION_INTERVAL_SECONDS: Final = 5
 MIN_DEPARTURE_INTERVAL_SECONDS: Final = 20
 
 VEHICLE_MISS_TTL_POLLS: Final = 2
