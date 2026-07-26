@@ -79,8 +79,8 @@ def parse_vehicle_positions(
 
         if not _matches_route(route, route_id=route_id, feed_route_short=feed_route_short, trip_id=trip_id):
             continue
-        if not _matches_direction(route, direction_id, headsign, static_store, trip_id):
-            continue
+        # Show every active vehicle on this route (both directions). Stop +
+        # departure sensors still use the configured stop for CBD arrivals.
 
         if not vp.HasField("position"):
             continue

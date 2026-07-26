@@ -1,8 +1,8 @@
-# Sydney Transport Live — Lovelace dashboard snippet
-# Paste into a new dashboard view (raw config) or merge into an existing view.
+# Sydney Transport Live — Lovelace dashboard
 #
-# After installing the integration, open Developer Tools → States, filter
-# device_tracker for your bus entities, and add them under the map card.
+# IMPORTANT: Do NOT hard-code individual device_tracker bus IDs.
+# Buses change all day; use geo_location_sources so every live 311 appears
+# automatically whenever it is on the road.
 
 title: Sydney Transport
 views:
@@ -12,8 +12,8 @@ views:
     cards:
       - type: markdown
         content: |
-          ## 311 · Macleay St → CBD
-          Live buses and next arrivals from Transport for NSW.
+          ## 311 · 81 Macleay St
+          All live Route 311 buses update automatically.
 
       - type: horizontal-stack
         cards:
@@ -26,15 +26,21 @@ views:
             name: Active buses
             icon: mdi:bus-multiple
 
+      # Fixed on 81 Macleay Street — buses come from geo_location_sources
       - type: map
-        auto_fit: true
+        title: Live 311 · 81 Macleay St
         default_zoom: 14
-        entities: []
-        # Add live buses, for example:
-        # - device_tracker.route_311_bus_1234
+        auto_fit: false
+        hours_to_show: 0
+        entities:
+          - entity: zone.macleay_st_home
+            name: Home
+        geo_location_sources:
+          - source: sydney_transport_live
+            focus: false
 
       - type: entities
-        title: Next arrival detail
+        title: Next arrival
         show_header_toggle: false
         entities:
           - entity: sensor.route_311_next_arrival
@@ -47,13 +53,3 @@ views:
             entity: sensor.route_311_next_arrival
             attribute: stop_name
             name: Stop
-          - type: attribute
-            entity: sensor.route_311_next_arrival
-            attribute: direction
-            name: Direction
-
-      - type: markdown
-        content: |
-          **Map tip:** If no buses are running, centre manually on Potts Point
-          (`-33.871`, `151.225`). Use **Developer Tools → States** to find
-          `device_tracker.route_311_bus_*` entities and add them to the Map card.

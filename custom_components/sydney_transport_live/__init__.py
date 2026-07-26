@@ -153,7 +153,7 @@ async def async_setup_entry(
     )
 
     await hass.config_entries.async_forward_entry_setups(
-        entry, [Platform.DEVICE_TRACKER, Platform.SENSOR]
+        entry, [Platform.DEVICE_TRACKER, Platform.SENSOR, Platform.GEO_LOCATION]
     )
     await async_setup_services(hass)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -172,7 +172,7 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, [Platform.DEVICE_TRACKER, Platform.SENSOR]
+        entry, [Platform.DEVICE_TRACKER, Platform.SENSOR, Platform.GEO_LOCATION]
     )
     if unload_ok:
         await async_unload_services(hass)

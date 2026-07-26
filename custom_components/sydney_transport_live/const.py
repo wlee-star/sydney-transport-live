@@ -89,6 +89,10 @@ CBD_HEADSIGN_PATTERNS: Final[tuple[str, ...]] = (
 PLATFORMS: Final[tuple[str, ...]] = (
     "device_tracker",
     "sensor",
+    "geo_location",
 )
+
+# Source string for Map card geo_location_sources
+GEO_LOCATION_SOURCE: Final = DOMAIN
 
 LOGGER_NAME: Final = f"custom_components.{DOMAIN}"
