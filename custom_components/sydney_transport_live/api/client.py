@@ -180,38 +180,51 @@ class TfnswApiClient:
     async def async_validate_api_key(self) -> None:
         """Validate the API key against the buses vehicle-positions feed.
 
-        Reads only a small response prefix so setup stays fast.
+        Only checks the HTTP status. Do not download the full city-wide
+        protobuf — abandoning a partial read can raise connection errors
+        that incorrectly surface as cannot_connect.
         """
         url = self._url(ENDPOINT_VEHICLE_POS)
+        headers = {
+            "Authorization": f"apikey {self._api_key}",
+            "Accept": "*/*",
+        }
         try:
-            async with asyncio.timeout(20.0):
-                async with self._session.get(url, headers=self._headers) as response:
-                    if response.status in (401, 403):
+            async with asyncio.timeout(30.0):
+                response = await self._session.get(url, headers=headers)
+                try:
+                    status = response.status
+                    if status in (401, 403):
                         body = await response.text()
                         _LOGGER.error(
                             "TfNSW auth failed during validation (%s): %s",
-                            response.status,
+                            status,
                             body[:300],
                         )
                         raise TfnswAuthError(
-                            f"TfNSW authentication failed ({response.status})"
+                            f"TfNSW authentication failed ({status})"
                         )
-                    if response.status == 429:
+                    if status == 429:
                         raise TfnswRateLimitError(retry_after=60)
-                    if response.status >= 400:
+                    if status >= 400:
                         body = await response.text()
                         _LOGGER.error(
                             "TfNSW validation error (%s): %s",
-                            response.status,
+                            status,
                             body[:300],
                         )
                         raise TfnswApiError(
-                            f"TfNSW API error {response.status}: {body[:200]}",
-                            status=response.status,
+                            f"TfNSW API error {status}: {body[:200]}",
+                            status=status,
                         )
-                    # Auth OK — discard the rest of the payload.
-                    await response.content.read(64)
-                    _LOGGER.debug("TfNSW API key validated via vehiclepos/buses")
+                    _LOGGER.debug(
+                        "TfNSW API key validated via vehiclepos/buses (HTTP %s)",
+                        status,
+                    )
+                finally:
+                    # Drop the connection without draining megabytes of protobuf.
+                    response.close()
+                    await response.wait_for_close()
         except TfnswAuthError:
             raise
         except TfnswRateLimitError:

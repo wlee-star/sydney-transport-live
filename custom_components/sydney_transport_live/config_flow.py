@@ -76,6 +76,7 @@ class SydneyTransportLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Collect and validate the TfNSW API key."""
         errors: dict[str, str] = {}
+        description_placeholders = {"error_detail": ""}
 
         if user_input is not None:
             api_key = normalize_api_key(user_input[CONF_API_KEY])
@@ -84,15 +85,18 @@ class SydneyTransportLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 try:
                     await _validate_api_key(self.hass, api_key)
-                except TfnswAuthError:
-                    _LOGGER.warning("TfNSW API key rejected during config flow")
+                except TfnswAuthError as err:
+                    _LOGGER.warning("TfNSW API key rejected during config flow: %s", err)
                     errors["base"] = "invalid_auth"
+                    description_placeholders["error_detail"] = str(err)
                 except TfnswError as err:
                     _LOGGER.warning("TfNSW connect error during config flow: %s", err)
                     errors["base"] = "cannot_connect"
-                except Exception:  # noqa: BLE001
+                    description_placeholders["error_detail"] = str(err)
+                except Exception as err:  # noqa: BLE001
                     _LOGGER.exception("Unexpected error validating TfNSW API key")
                     errors["base"] = "unknown"
+                    description_placeholders["error_detail"] = str(err)
                 else:
                     self._api_key = api_key
                     if self._reauth_entry:
@@ -103,6 +107,7 @@ class SydneyTransportLiveConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
+            description_placeholders=description_placeholders,
         )
 
     async def async_step_route(

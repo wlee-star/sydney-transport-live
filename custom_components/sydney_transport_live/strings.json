@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Transport for NSW API key",
-        "description": "Create an API token at the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) (Profile → API Tokens). Paste **only the token** — do not include the word `apikey`.",
+        "description": "Create an API token at the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au) (Profile → API Tokens). Paste **only the token** — do not include the word `apikey`.\n\n{error_detail}",
         "data": {
           "api_key": "API key"
         }
