@@ -92,10 +92,25 @@ class Arrival:
     destination: str | None
     estimated_arrival: datetime | None
     minutes: int | None
+    seconds: int | None = None
     trip_id: str | None = None
     vehicle_id: str | None = None
     realtime: bool = False
     occupancy: str | None = None
+
+    @property
+    def eta_display(self) -> str:
+        """Countdown string for dashboards (m:ss)."""
+        if self.seconds is None:
+            if self.minutes is None:
+                return "—"
+            return f"{self.minutes} min"
+        total = max(0, int(self.seconds))
+        mins, secs = divmod(total, 60)
+        if mins >= 60:
+            hours, mins = divmod(mins, 60)
+            return f"{hours}h {mins:02d}m"
+        return f"{mins}:{secs:02d}"
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize for sensor attributes."""
@@ -106,6 +121,8 @@ class Arrival:
                 self.estimated_arrival.isoformat() if self.estimated_arrival else None
             ),
             "minutes": self.minutes,
+            "seconds": self.seconds,
+            "eta_display": self.eta_display,
             "trip_id": self.trip_id,
             "vehicle_id": self.vehicle_id,
             "realtime": self.realtime,

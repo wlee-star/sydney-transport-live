@@ -165,6 +165,14 @@ class TfnswApiClient:
             "depArrMacro": "dep",
             "itdDate": now.strftime("%Y%m%d"),
             "itdTime": now.strftime("%H%M"),
+            # Bus only (MOT 5) — drop train/ferry/light rail noise.
+            "excludedMeans": "checkbox",
+            "exclMOT_1": "1",
+            "exclMOT_4": "1",
+            "exclMOT_5": "0",
+            "exclMOT_7": "1",
+            "exclMOT_9": "1",
+            "exclMOT_11": "1",
             "TfNSWDM": "true",
             "version": "10.2.1.42",
         }

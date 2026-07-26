@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTime
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import StateType
 
+from .api.departure import format_eta, refresh_arrival_countdowns
 from .const import (
     ATTR_ARRIVALS,
     ATTR_DIRECTION,
@@ -19,11 +23,14 @@ from .const import (
     ATTR_ROUTE,
     ATTR_STOP_NAME,
     ATTR_VEHICLE_IDS,
+    ETA_TICK_SECONDS,
 )
 from .coordinator import DepartureCoordinator, VehiclePositionCoordinator
 from .entity import SydneyTransportEntity
 from .helpers.entity_id import arrival_unique_id, status_unique_id
 from .models import Arrival, RouteConfig, StopConfig
+
+_SYDNEY = ZoneInfo("Australia/Sydney")
 
 
 async def async_setup_entry(
@@ -51,11 +58,12 @@ async def async_setup_entry(
 
 
 class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
-    """Minutes until the next matching departure at a stop."""
+    """Seconds until the next matching departure at a stop."""
 
     _attr_translation_key = "next_arrival"
     _attr_icon = "mdi:bus-clock"
-    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_device_class = SensorDeviceClass.DURATION
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
@@ -74,17 +82,39 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
         )
         self._attr_name = stop.sensor_name or stop.stop_name or "Next arrival"
         self._attr_suggested_display_precision = 0
+        self._unsub_tick = None
 
-    def _arrivals(self) -> list[Arrival]:
+    async def async_added_to_hass(self) -> None:
+        """Start a 1s countdown tick so the card updates as the bus approaches."""
+        await super().async_added_to_hass()
+        self._unsub_tick = async_track_time_interval(
+            self.hass,
+            self._async_tick,
+            timedelta(seconds=ETA_TICK_SECONDS),
+        )
+        self.async_on_remove(self._unsub_tick)
+
+    @callback
+    def _async_tick(self, _now: datetime) -> None:
+        """Refresh HA state every second while there is an ETA."""
+        if self._raw_arrivals():
+            self.async_write_ha_state()
+
+    def _raw_arrivals(self) -> list[Arrival]:
         data = self.coordinator.data or {}
         return list(data.get(self._stop_key, []))
+
+    def _arrivals(self) -> list[Arrival]:
+        return refresh_arrival_countdowns(
+            self._raw_arrivals(), now=datetime.now(_SYDNEY)
+        )
 
     @property
     def native_value(self) -> StateType:
         arrivals = self._arrivals()
-        if not arrivals:
+        if not arrivals or arrivals[0].seconds is None:
             return None
-        return arrivals[0].minutes
+        return arrivals[0].seconds
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -93,6 +123,14 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
         last_update = None
         if self.coordinator.last_update_success and self.coordinator.last_update_success_time:
             last_update = self.coordinator.last_update_success_time.isoformat()
+        eta_lines = []
+        for a in arrivals[:3]:
+            line = f"{a.route} — {a.eta_display}"
+            if a.destination:
+                line = f"{line} · {a.destination}"
+            if a.realtime:
+                line = f"{line} · live"
+            eta_lines.append(line)
         return {
             ATTR_ROUTE: self._route.short_name,
             ATTR_STOP_NAME: self._stop.stop_name,
@@ -102,9 +140,11 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
                 if first and first.estimated_arrival
                 else None
             ),
+            "eta_display": first.eta_display if first else None,
             ATTR_ARRIVALS: [a.as_dict() for a in arrivals],
+            "eta_lines": eta_lines,
             "eta_summary": ", ".join(
-                f"{a.minutes} min" for a in arrivals[:3] if a.minutes is not None
+                format_eta(a.seconds, a.minutes) for a in arrivals[:3]
             ),
             ATTR_LAST_UPDATE: last_update,
         }

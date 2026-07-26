@@ -59,7 +59,7 @@
     "step": {
       "init": {
         "title": "Sydney Transport Live options",
-        "description": "Adjust route, stop, direction, and polling intervals. Position interval minimum is 10s; departure minimum is 20s.",
+        "description": "Adjust route, stop, direction, and polling intervals. Position interval minimum is 5s; departure minimum is 10s. Departure sensors also tick every 1s for m:ss countdowns.",
         "data": {
           "route_short_name": "Route number",
           "stop_id": "Stop ID",

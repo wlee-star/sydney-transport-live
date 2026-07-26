@@ -182,25 +182,42 @@ class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
         errors: list[str] = []
 
         for stop in self.stops:
-            stop_ref = stop.stop_code or stop.stop_id
-            if not stop_ref:
-                continue
             key = stop.stop_code or stop.stop_id
-            try:
-                payload = await self.client.async_get_departures(stop_ref)
-                results[key] = parse_departures(payload, route=self.route)
-            except TfnswAuthError as err:
-                from homeassistant.exceptions import ConfigEntryAuthFailed
+            if not key:
+                continue
+            refs: list[str] = []
+            for candidate in (stop.stop_code, stop.stop_id):
+                if candidate and candidate not in refs:
+                    refs.append(candidate)
+            if not refs:
+                continue
 
-                raise ConfigEntryAuthFailed(str(err)) from err
-            except TfnswRateLimitError as err:
-                raise UpdateFailed(
-                    f"Rate limited by TfNSW (retry after {err.retry_after or 60}s)"
-                ) from err
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.warning("Departure fetch failed for stop %s: %s", stop_ref, err)
-                errors.append(f"{stop_ref}: {err}")
-                results[key] = []
+            parsed: list[Arrival] = []
+            last_err: Exception | None = None
+            for stop_ref in refs:
+                try:
+                    payload = await self.client.async_get_departures(stop_ref)
+                    parsed = parse_departures(payload, route=self.route)
+                    if parsed or payload.get("stopEvents"):
+                        # Keep first successful board (even if no 311 matched).
+                        break
+                except TfnswAuthError as err:
+                    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+                    raise ConfigEntryAuthFailed(str(err)) from err
+                except TfnswRateLimitError as err:
+                    raise UpdateFailed(
+                        f"Rate limited by TfNSW (retry after {err.retry_after or 60}s)"
+                    ) from err
+                except Exception as err:  # noqa: BLE001
+                    last_err = err
+                    _LOGGER.warning(
+                        "Departure fetch failed for stop %s: %s", stop_ref, err
+                    )
+
+            if last_err and not parsed and key not in results:
+                errors.append(f"{key}: {last_err}")
+            results[key] = parsed
 
         if not results and errors:
             raise UpdateFailed(f"Error fetching departures: {'; '.join(errors)}")
