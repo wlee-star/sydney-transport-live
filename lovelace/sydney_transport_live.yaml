@@ -27,42 +27,32 @@ views:
 
       # ETA timetable — updates every second as the bus approaches
       - type: markdown
-        content: |
+        content: >
           ### Macleay St At Rockwall Cres
+
           → City · ~50 m from home
 
-          {% set ent = 'sensor.route_311_at_rockwall_cres' %}
-          {% if states(ent) in ['unavailable', 'unknown', 'none'] %}
-          _Sensor unavailable — update to v1.2.1 and restart HA_
-          {% else %}
-          {% set lines = state_attr(ent, 'eta_lines') or [] %}
-          {% if lines %}
-          {% for line in lines %}
-          **{{ line }}**
-          {% endfor %}
-          {% else %}
-          _No 311 departures right now_
-          {% endif %}
-          {% endif %}
+
+          {{
+            ((state_attr('sensor.route_311_at_rockwall_cres', 'eta_lines') or [])
+            | join('\n\n'))
+            or '_No 311 departures right now_'
+          }}
+
 
           ---
 
+
           ### Macleay St Opp Rockwall Cres
+
           → Central · ~90 m from home
 
-          {% set ent = 'sensor.route_311_opp_rockwall_cres' %}
-          {% if states(ent) in ['unavailable', 'unknown', 'none'] %}
-          _Sensor unavailable — update to v1.2.1 and restart HA_
-          {% else %}
-          {% set lines = state_attr(ent, 'eta_lines') or [] %}
-          {% if lines %}
-          {% for line in lines %}
-          **{{ line }}**
-          {% endfor %}
-          {% else %}
-          _No 311 departures right now_
-          {% endif %}
-          {% endif %}
+
+          {{
+            ((state_attr('sensor.route_311_opp_rockwall_cres', 'eta_lines') or [])
+            | join('\n\n'))
+            or '_No 311 departures right now_'
+          }}
 
       - type: horizontal-stack
         cards:

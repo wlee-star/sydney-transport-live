@@ -14,6 +14,7 @@ class StopConfig:
     stop_id: str
     stop_name: str
     stop_code: str | None = None
+    departure_stop_id: str | None = None
     latitude: float | None = None
     longitude: float | None = None
     direction_label: str = ""

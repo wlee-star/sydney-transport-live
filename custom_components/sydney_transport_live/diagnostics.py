@@ -37,6 +37,7 @@ async def async_get_config_entry_diagnostics(
             "stop_id": runtime.stop.stop_id,
             "stop_name": runtime.stop.stop_name,
             "stop_code": runtime.stop.stop_code,
+            "departure_stop_id": runtime.stop.departure_stop_id,
             "latitude": runtime.stop.latitude,
             "longitude": runtime.stop.longitude,
         },
@@ -45,6 +46,7 @@ async def async_get_config_entry_diagnostics(
                 "stop_id": s.stop_id,
                 "stop_name": s.stop_name,
                 "stop_code": s.stop_code,
+                "departure_stop_id": s.departure_stop_id,
                 "direction_label": s.direction_label,
                 "sensor_name": s.sensor_name,
             }

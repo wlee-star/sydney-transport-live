@@ -185,6 +185,26 @@ class TfnswApiClient:
         assert isinstance(data, dict)
         return data
 
+    async def async_find_stops(self, query: str) -> list[dict[str, Any]]:
+        """Find TfNSW stop records by name for departure-board resolution."""
+        data = await self._request(
+            ENDPOINT_STOP_FINDER,
+            params={
+                "outputFormat": "rapidJSON",
+                "coordOutputFormat": "EPSG:4326",
+                "type_sf": "stop",
+                "name_sf": query,
+                "anyMaxSizeHitList": "20",
+                "TfNSWSF": "true",
+                "version": "10.2.1.42",
+            },
+            timeout=10.0,
+            expect_json=True,
+        )
+        assert isinstance(data, dict)
+        locations = data.get("locations") or data.get("location") or []
+        return [location for location in locations if isinstance(location, dict)]
+
     async def async_validate_api_key(self) -> None:
         """Validate the API key against the buses vehicle-positions feed.
 

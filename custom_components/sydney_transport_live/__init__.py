@@ -139,12 +139,16 @@ async def async_setup_entry(
     for seed in CURATED_STOPS:
         code = seed["stop_code"]
         resolved = static_store.find_stop_by_code(code)
+        departure_stop_id = await _async_resolve_departure_stop_id(
+            client, seed["name"], seed.get("departure_stop_id")
+        )
         if resolved is not None:
             stops.append(
                 StopConfig(
                     stop_id=resolved.stop_id,
                     stop_name=resolved.stop_name,
                     stop_code=resolved.stop_code or code,
+                    departure_stop_id=departure_stop_id,
                     latitude=resolved.latitude,
                     longitude=resolved.longitude,
                     direction_label=seed.get("direction_label", ""),
@@ -157,6 +161,7 @@ async def async_setup_entry(
                     stop_id=code,
                     stop_name=seed["name"],
                     stop_code=code,
+                    departure_stop_id=departure_stop_id,
                     direction_label=seed.get("direction_label", ""),
                     sensor_name=seed.get("sensor_name", seed["name"]),
                 )
@@ -228,3 +233,56 @@ async def async_reload_entry(
 ) -> None:
     """Reload config entry when options change."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def _async_resolve_departure_stop_id(
+    client: TfnswApiClient,
+    stop_name: str,
+    fallback: str | None = None,
+) -> str | None:
+    """Resolve a human stop name to the Trip Planner stop ID.
+
+    GTFS stop codes and Trip Planner's departure-monitor IDs are not reliably
+    interchangeable. Resolve from TfNSW at startup so arrivals use the same
+    identifier as the official departures page.
+    """
+    try:
+        locations = await client.async_find_stops(stop_name)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.debug("Could not resolve Trip Planner stop %s: %s", stop_name, err)
+        return fallback
+
+    expected = _normalise_stop_name(stop_name)
+    best: dict[str, object] | None = None
+    for location in locations:
+        name = str(
+            location.get("name")
+            or location.get("disassembledName")
+            or location.get("label")
+            or ""
+        )
+        if _normalise_stop_name(name) == expected:
+            best = location
+            break
+        if best is None and expected in _normalise_stop_name(name):
+            best = location
+
+    if best is None:
+        return fallback
+    for key in ("id", "stopId", "assignedStopId"):
+        value = best.get(key)
+        if value:
+            return str(value)
+    return fallback
+
+
+def _normalise_stop_name(value: str) -> str:
+    """Compare common TfNSW stop naming variants."""
+    return (
+        value.lower()
+        .replace("street", "st")
+        .replace("opposite", "opp")
+        .replace(",", "")
+        .replace(".", "")
+        .replace(" ", "")
+    )

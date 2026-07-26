@@ -186,7 +186,11 @@ class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
             if not key:
                 continue
             refs: list[str] = []
-            for candidate in (stop.stop_code, stop.stop_id):
+            for candidate in (
+                stop.departure_stop_id,
+                stop.stop_code,
+                stop.stop_id,
+            ):
                 if candidate and candidate not in refs:
                     refs.append(candidate)
             if not refs:

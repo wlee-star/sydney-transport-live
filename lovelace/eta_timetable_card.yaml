@@ -1,0 +1,27 @@
+type: markdown
+content: >
+  ### Macleay St At Rockwall Cres
+
+  → City · ~50 m from home
+
+
+  {{
+    ((state_attr('sensor.route_311_at_rockwall_cres', 'eta_lines') or [])
+    | join('\n\n'))
+    or '_No 311 departures right now_'
+  }}
+
+
+  ---
+
+
+  ### Macleay St Opp Rockwall Cres
+
+  → Central · ~90 m from home
+
+
+  {{
+    ((state_attr('sensor.route_311_opp_rockwall_cres', 'eta_lines') or [])
+    | join('\n\n'))
+    or '_No 311 departures right now_'
+  }}
