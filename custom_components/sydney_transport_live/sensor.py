@@ -121,8 +121,11 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
         arrivals = self._arrivals()
         first = arrivals[0] if arrivals else None
         last_update = None
-        if self.coordinator.last_update_success and self.coordinator.last_update_success_time:
-            last_update = self.coordinator.last_update_success_time.isoformat()
+        # Never let a missing coordinator attribute raise here: that would drop
+        # every attribute on the entity, including eta_lines.
+        success_time = getattr(self.coordinator, "last_update_success_time", None)
+        if self.coordinator.last_update_success and success_time:
+            last_update = success_time.isoformat()
         eta_lines = []
         for a in arrivals[:3]:
             line = f"{a.route} — {a.eta_display}"
@@ -174,8 +177,9 @@ class ActiveBusesSensor(SydneyTransportEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
         last_update = None
-        if self.coordinator.last_update_success_time:
-            last_update = self.coordinator.last_update_success_time.isoformat()
+        success_time = getattr(self.coordinator, "last_update_success_time", None)
+        if success_time:
+            last_update = success_time.isoformat()
         return {
             ATTR_ROUTE: self._route.short_name,
             ATTR_DIRECTION: self._route.direction_label,

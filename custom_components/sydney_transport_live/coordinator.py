@@ -8,7 +8,10 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    TimestampDataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .api.client import TfnswApiClient
 from .api.departure import parse_departures
@@ -21,7 +24,7 @@ from .models import Arrival, RouteConfig, StopConfig, Vehicle
 _LOGGER = logging.getLogger(__name__)
 
 
-class VehiclePositionCoordinator(DataUpdateCoordinator[dict[str, Vehicle]]):
+class VehiclePositionCoordinator(TimestampDataUpdateCoordinator[dict[str, Vehicle]]):
     """Poll GTFS-R vehicle positions and filter to the configured route."""
 
     def __init__(
@@ -141,7 +144,7 @@ class VehiclePositionCoordinator(DataUpdateCoordinator[dict[str, Vehicle]]):
         return retained
 
 
-class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
+class DepartureCoordinator(TimestampDataUpdateCoordinator[dict[str, list[Arrival]]]):
     """Poll Trip Planner departure boards for one or more stops."""
 
     def __init__(
