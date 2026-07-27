@@ -26,9 +26,10 @@ DEFAULT_DIRECTION_LABEL: Final = "Sydney CBD"
 # "At Rockwall Cres" is typically CBD-bound; "Opp" is the opposite side.
 CURATED_STOPS: Final[tuple[dict[str, str], ...]] = (
     {
-        # TfNSW Trip Planner departure-board ID confirmed by the official
-        # stop page: https://transportnsw.info/stop?q=10134408
-        "stop_code": "201153",
+        # 201137 is the stop itself; 10134408 is the Trip Planner alias for it.
+        # Both return the same board — do not use 201153, which is Fitzroy
+        # Gardens (a different stop ~300 m south, heading the other way).
+        "stop_code": "201137",
         "departure_stop_id": "10134408",
         "name": "Macleay St at Rockwall Cres",
         "hint": "Northbound / Millers Point",
@@ -37,6 +38,7 @@ CURATED_STOPS: Final[tuple[dict[str, str], ...]] = (
     },
     {
         "stop_code": "201152",
+        "departure_stop_id": "201152",
         "name": "Macleay St Opp Rockwall Cres",
         "hint": "Opposite side of street",
         "direction_label": "→ Central",

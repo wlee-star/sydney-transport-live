@@ -139,9 +139,13 @@ async def async_setup_entry(
     for seed in CURATED_STOPS:
         code = seed["stop_code"]
         resolved = static_store.find_stop_by_code(code)
-        departure_stop_id = await _async_resolve_departure_stop_id(
-            client, seed["name"], seed.get("departure_stop_id")
-        )
+        # Curated IDs are verified against the live departure board, so only
+        # fall back to the fuzzy name lookup when a seed has none.
+        departure_stop_id = seed.get("departure_stop_id")
+        if not departure_stop_id:
+            departure_stop_id = await _async_resolve_departure_stop_id(
+                client, seed["name"]
+            )
         if resolved is not None:
             stops.append(
                 StopConfig(
