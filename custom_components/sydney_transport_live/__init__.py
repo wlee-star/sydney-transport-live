@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api.client import TfnswApiClient
@@ -37,6 +38,11 @@ from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
 
+# Stop codes corrected after release; arrival unique_ids embed the stop code,
+# so existing entities must be re-pointed or HA orphans them and the
+# replacement lands on a "_2" entity_id that dashboards do not reference.
+_STOP_CODE_MIGRATIONS: dict[str, str] = {"201153": "201137"}
+
 type SydneyTransportConfigEntry = ConfigEntry[SydneyTransportRuntimeData]
 
 
@@ -57,6 +63,8 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: SydneyTransportConfigEntry
 ) -> bool:
     """Set up Sydney Transport Live from a config entry."""
+    _async_migrate_stop_code_unique_ids(hass, entry)
+
     session = async_get_clientsession(hass)
     api_key: str = entry.data[CONF_API_KEY]
     client = TfnswApiClient(session=session, api_key=api_key)
@@ -237,6 +245,52 @@ async def async_reload_entry(
 ) -> None:
     """Reload config entry when options change."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+@callback
+def _async_migrate_stop_code_unique_ids(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Re-point arrival entities whose stop code was corrected after release.
+
+    Keeps the original entity_id (and its history) so existing dashboards
+    referencing it keep working.
+    """
+    registry = er.async_get(hass)
+    entries = er.async_entries_for_config_entry(registry, entry.entry_id)
+
+    for old_code, new_code in _STOP_CODE_MIGRATIONS.items():
+        old_fragment = f"_arrival_{old_code}_"
+        new_fragment = f"_arrival_{new_code}_"
+        for reg_entry in entries:
+            if old_fragment not in reg_entry.unique_id:
+                continue
+            new_unique_id = reg_entry.unique_id.replace(old_fragment, new_fragment)
+
+            # A previous startup may already have created the replacement under
+            # a suffixed entity_id. Drop it so the original can be reclaimed.
+            duplicate = registry.async_get_entity_id(
+                reg_entry.domain, reg_entry.platform, new_unique_id
+            )
+            if duplicate == reg_entry.entity_id:
+                continue
+            if duplicate is not None:
+                _LOGGER.info(
+                    "Removing duplicate arrival entity %s so %s can keep its ID",
+                    duplicate,
+                    reg_entry.entity_id,
+                )
+                registry.async_remove(duplicate)
+
+            _LOGGER.info(
+                "Migrating %s unique_id %s -> %s",
+                reg_entry.entity_id,
+                reg_entry.unique_id,
+                new_unique_id,
+            )
+            registry.async_update_entity(
+                reg_entry.entity_id, new_unique_id=new_unique_id
+            )
 
 
 async def _async_resolve_departure_stop_id(
