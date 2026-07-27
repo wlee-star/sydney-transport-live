@@ -24,6 +24,19 @@ views:
         geo_location_sources:
           - source: sydney_transport_live
             focus: false
+        # Optional: requires card-mod (HACS). Strips HA's default entity-order
+        # ring so only the destination-colored 311 circle from the integration shows.
+        card_mod:
+          style:
+            ha-map:
+              $:
+                .leaflet-marker-icon:
+                  ha-entity-marker $: |
+                    .marker {
+                      border: none !important;
+                      background-color: transparent !important;
+                      box-shadow: none !important;
+                    }
 
       # ETA timetable — updates every second as the bus approaches
       - type: markdown
