@@ -185,6 +185,7 @@ class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
         if not self.stops:
             raise UpdateFailed("No stops configured for departures")
 
+        previous: dict[str, list[Arrival]] = self.data or {}
         results: dict[str, list[Arrival]] = {}
         errors: list[str] = []
 
@@ -227,11 +228,27 @@ class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
                         "Departure fetch failed for stop %s: %s", stop_ref, err
                     )
 
-            if last_err and not parsed and key not in results:
-                errors.append(f"{key}: {last_err}")
-            results[key] = parsed
+            if last_err and not parsed:
+                cached = previous.get(key) or []
+                if cached:
+                    _LOGGER.warning(
+                        "Keeping cached departures for stop %s after fetch error",
+                        key,
+                    )
+                    results[key] = cached
+                else:
+                    errors.append(f"{key}: {last_err}")
+                    results[key] = parsed
+            else:
+                results[key] = parsed
 
-        if not results and errors:
+        if errors and not any(results.values()):
+            if previous and any(previous.values()):
+                _LOGGER.warning(
+                    "Departure poll failed (%s); keeping cached board",
+                    "; ".join(errors),
+                )
+                return previous
             raise UpdateFailed(f"Error fetching departures: {'; '.join(errors)}")
         self.last_update_success_time = utcnow()
         return results

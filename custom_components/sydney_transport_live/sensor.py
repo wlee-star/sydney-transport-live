@@ -110,6 +110,19 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
         )
 
     @property
+    def available(self) -> bool:
+        """Stay available while cached departures exist.
+
+        A transient TfNSW failure flips coordinator.last_update_success to False.
+        Default CoordinatorEntity behaviour then marks us unavailable and the
+        dashboard loses eta_lines — which looked like a full regression to
+        'never fetched'. Keep showing the last good board instead.
+        """
+        if self._raw_arrivals():
+            return True
+        return super().available
+
+    @property
     def native_value(self) -> StateType:
         arrivals = self._arrivals()
         if not arrivals or arrivals[0].seconds is None:
@@ -124,7 +137,7 @@ class NextArrivalSensor(SydneyTransportEntity, SensorEntity):
         # Never let a missing coordinator attribute raise here: that would drop
         # every attribute on the entity, including eta_lines.
         success_time = getattr(self.coordinator, "last_update_success_time", None)
-        if self.coordinator.last_update_success and success_time:
+        if success_time:
             last_update = success_time.isoformat()
         eta_lines = []
         for a in arrivals[:3]:
