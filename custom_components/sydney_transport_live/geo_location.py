@@ -2,6 +2,10 @@
 
 Uses ``geo_location_sources`` so the dashboard always shows every live bus
 without hard-coding device_tracker entity IDs (those go stale when trips end).
+
+Each bus is tagged with a direction-specific *source* so the native Map card
+can render the default ``311`` label with a blue ring (City) or grey ring
+(Central) — no custom pin images.
 """
 
 from __future__ import annotations
@@ -23,7 +27,8 @@ from .const import (
     ATTR_TRIP_ID,
     ATTR_VEHICLE_ID,
     ATTRIBUTION,
-    DOMAIN,
+    SOURCE_CENTRAL,
+    SOURCE_CITY,
 )
 from .coordinator import VehiclePositionCoordinator
 from .helpers.entity_id import bus_unique_id
@@ -31,9 +36,6 @@ from .helpers.filtering import destination_kind
 from .models import RouteConfig, Vehicle
 
 _LOGGER = logging.getLogger(__name__)
-
-# Map card: geo_location_sources: [sydney_transport_live]
-SOURCE = DOMAIN
 
 
 async def async_setup_entry(
@@ -83,9 +85,7 @@ class SydneyBusGeoLocation(GeolocationEvent):
 
     _attr_has_entity_name = False
     _attr_attribution = ATTRIBUTION
-    _attr_icon = "mdi:bus"
     _attr_should_poll = False
-    _attr_source = SOURCE
 
     def __init__(
         self,
@@ -119,6 +119,16 @@ class SydneyBusGeoLocation(GeolocationEvent):
         return self.coordinator.data.get(self._vehicle_id)
 
     @property
+    def source(self) -> str:
+        """Map-card source used to pick ring colour (City=blue, Central=grey)."""
+        vehicle = self._vehicle
+        if vehicle is None:
+            return SOURCE_CITY
+        if destination_kind(vehicle.destination) == "central":
+            return SOURCE_CENTRAL
+        return SOURCE_CITY
+
+    @property
     def available(self) -> bool:
         return self.coordinator.last_update_success and self._vehicle is not None
 
@@ -136,20 +146,6 @@ class SydneyBusGeoLocation(GeolocationEvent):
     def distance(self) -> float | None:
         """Distance is optional; Map card mainly needs lat/lon."""
         return None
-
-    @property
-    def entity_picture(self) -> str | None:
-        """Direction-coded marker: aqua for City, grey for Central."""
-        vehicle = self._vehicle
-        if vehicle is None:
-            return None
-        markers = self.hass.data.get(DOMAIN, {}).get("marker_urls") or {}
-        kind = destination_kind(vehicle.destination)
-        if kind == "city":
-            return markers.get("city") or markers.get("default")
-        if kind == "central":
-            return markers.get("central") or markers.get("default")
-        return markers.get("default")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

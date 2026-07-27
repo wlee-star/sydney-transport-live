@@ -102,18 +102,17 @@ CENTRAL_HEADSIGN_PATTERNS: Final[tuple[str, ...]] = (
     "eddy",
 )
 
-# Map marker asset filenames (installed to /local/sydney_transport_live/)
-MARKER_CITY_FILENAME: Final = "marker_311_city.svg"
-MARKER_CENTRAL_FILENAME: Final = "marker_311_central.svg"
-MARKER_DEFAULT_FILENAME: Final = "marker_311.svg"
-
 PLATFORMS: Final[tuple[str, ...]] = (
     "device_tracker",
     "sensor",
     "geo_location",
 )
 
-# Source string for Map card geo_location_sources
+# Source strings for Map card geo_location_sources (direction-coded rings).
+SOURCE_CITY: Final = f"{DOMAIN}_city"
+SOURCE_CENTRAL: Final = f"{DOMAIN}_central"
+
+# Legacy alias — prefer SOURCE_CITY / SOURCE_CENTRAL on the map card.
 GEO_LOCATION_SOURCE: Final = DOMAIN
 
 LOGGER_NAME: Final = f"custom_components.{DOMAIN}"
