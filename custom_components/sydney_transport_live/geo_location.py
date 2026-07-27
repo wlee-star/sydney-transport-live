@@ -27,6 +27,7 @@ from .const import (
 )
 from .coordinator import VehiclePositionCoordinator
 from .helpers.entity_id import bus_unique_id
+from .helpers.filtering import destination_kind
 from .models import RouteConfig, Vehicle
 
 _LOGGER = logging.getLogger(__name__)
@@ -135,6 +136,20 @@ class SydneyBusGeoLocation(GeolocationEvent):
     def distance(self) -> float | None:
         """Distance is optional; Map card mainly needs lat/lon."""
         return None
+
+    @property
+    def entity_picture(self) -> str | None:
+        """Direction-coded marker: aqua for City, grey for Central."""
+        vehicle = self._vehicle
+        if vehicle is None:
+            return None
+        markers = self.hass.data.get(DOMAIN, {}).get("marker_urls") or {}
+        kind = destination_kind(vehicle.destination)
+        if kind == "city":
+            return markers.get("city") or markers.get("default")
+        if kind == "central":
+            return markers.get("central") or markers.get("default")
+        return markers.get("default")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

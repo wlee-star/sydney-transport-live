@@ -96,6 +96,17 @@ CBD_HEADSIGN_PATTERNS: Final[tuple[str, ...]] = (
     "town hall",
 )
 
+# Headsign patterns for Central-bound 311 buses
+CENTRAL_HEADSIGN_PATTERNS: Final[tuple[str, ...]] = (
+    "central",
+    "eddy",
+)
+
+# Map marker asset filenames (installed to /local/sydney_transport_live/)
+MARKER_CITY_FILENAME: Final = "marker_311_city.svg"
+MARKER_CENTRAL_FILENAME: Final = "marker_311_central.svg"
+MARKER_DEFAULT_FILENAME: Final = "marker_311.svg"
+
 PLATFORMS: Final[tuple[str, ...]] = (
     "device_tracker",
     "sensor",

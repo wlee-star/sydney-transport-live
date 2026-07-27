@@ -19,10 +19,12 @@ from .const import (
     ATTR_STOP_STATUS,
     ATTR_TRIP_ID,
     ATTR_VEHICLE_ID,
+    DOMAIN,
 )
 from .coordinator import VehiclePositionCoordinator
 from .entity import SydneyTransportEntity
 from .helpers.entity_id import bus_unique_id
+from .helpers.filtering import destination_kind
 from .models import Vehicle
 
 _LOGGER = logging.getLogger(__name__)
@@ -114,6 +116,20 @@ class SydneyBusTracker(SydneyTransportEntity, TrackerEntity):
     @property
     def location_accuracy(self) -> int:
         return 50
+
+    @property
+    def entity_picture(self) -> str | None:
+        """Direction-coded marker: aqua for City, grey for Central."""
+        vehicle = self._vehicle
+        if vehicle is None:
+            return None
+        markers = self.hass.data.get(DOMAIN, {}).get("marker_urls") or {}
+        kind = destination_kind(vehicle.destination)
+        if kind == "city":
+            return markers.get("city") or markers.get("default")
+        if kind == "central":
+            return markers.get("central") or markers.get("default")
+        return markers.get("default")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

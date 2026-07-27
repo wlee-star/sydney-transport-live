@@ -116,8 +116,8 @@ async def async_setup_entry(
             err,
         )
 
-    marker_url = await hass.async_add_executor_job(install_map_assets, hass)
-    hass.data.setdefault(DOMAIN, {})["marker_url"] = marker_url
+    marker_urls = await hass.async_add_executor_job(install_map_assets, hass)
+    hass.data.setdefault(DOMAIN, {})["marker_urls"] = marker_urls
 
     route_ids = static_store.route_ids_for_short_name(route_short_name)
     route = RouteConfig(
