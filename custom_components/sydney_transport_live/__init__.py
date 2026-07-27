@@ -43,6 +43,13 @@ _LOGGER = logging.getLogger(__name__)
 # replacement lands on a "_2" entity_id that dashboards do not reference.
 _STOP_CODE_MIGRATIONS: dict[str, str] = {"201153": "201137"}
 
+# Preferred dashboard entity_ids. If a prior release created `_2` duplicates,
+# reclaim the original names so Lovelace cards keep working.
+_PREFERRED_ARRIVAL_ENTITY_IDS = (
+    "sensor.route_311_at_rockwall_cres",
+    "sensor.route_311_opp_rockwall_cres",
+)
+
 type SydneyTransportConfigEntry = ConfigEntry[SydneyTransportRuntimeData]
 
 
@@ -65,8 +72,9 @@ async def async_setup_entry(
     """Set up Sydney Transport Live from a config entry."""
     try:
         _async_migrate_stop_code_unique_ids(hass, entry)
+        _async_reclaim_arrival_entity_ids(hass, entry)
     except Exception as err:  # noqa: BLE001
-        _LOGGER.warning("Stop-code unique_id migration skipped: %s", err)
+        _LOGGER.warning("Entity registry migration skipped: %s", err)
 
     session = async_get_clientsession(hass)
     api_key: str = entry.data[CONF_API_KEY]
@@ -305,6 +313,41 @@ def _async_migrate_stop_code_unique_ids(
             registry.async_update_entity(
                 reg_entry.entity_id, new_unique_id=new_unique_id
             )
+
+
+@callback
+def _async_reclaim_arrival_entity_ids(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Rename sensor.*_2 arrivals back onto the dashboard entity_ids.
+
+    After the stop-code unique_id change, HA often created
+    ``sensor.route_311_at_rockwall_cres_2`` while leaving the original id as a
+    restored/unavailable shell. Dashboards still point at the original id.
+    """
+    registry = er.async_get(hass)
+    owned = {
+        reg.entity_id: reg
+        for reg in er.async_entries_for_config_entry(registry, entry.entry_id)
+    }
+
+    for preferred in _PREFERRED_ARRIVAL_ENTITY_IDS:
+        suffixed = f"{preferred}_2"
+        live = owned.get(suffixed)
+        if live is None:
+            continue
+
+        shell = owned.get(preferred)
+        if shell is not None:
+            _LOGGER.info(
+                "Removing restored arrival shell %s so %s can reclaim that id",
+                preferred,
+                suffixed,
+            )
+            registry.async_remove(preferred)
+
+        _LOGGER.info("Reclaiming arrival entity_id %s -> %s", suffixed, preferred)
+        registry.async_update_entity(suffixed, new_entity_id=preferred)
 
 
 async def _async_resolve_departure_stop_id(

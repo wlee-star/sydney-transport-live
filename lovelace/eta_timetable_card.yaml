@@ -1,27 +1,39 @@
 type: markdown
-content: >
-  ### Macleay St At Rockwall Cres
+title: 311 · Rockwall Cres
+content: |
+  {%- set at_ids = [
+    'sensor.route_311_at_rockwall_cres',
+    'sensor.route_311_at_rockwall_cres_2'
+  ] %}
+  {%- set opp_ids = [
+    'sensor.route_311_opp_rockwall_cres',
+    'sensor.route_311_opp_rockwall_cres_2'
+  ] %}
+  {%- set at = at_ids
+      | select('has_value')
+      | list
+      | first
+      | default(at_ids[0]) %}
+  {%- set opp = opp_ids
+      | select('has_value')
+      | list
+      | first
+      | default(opp_ids[0]) %}
 
+  ### Macleay St At Rockwall Cres
   → City · ~50 m from home
 
-
   {{
-    ((state_attr('sensor.route_311_at_rockwall_cres', 'eta_lines') or [])
-    | join('\n\n'))
+    ((state_attr(at, 'eta_lines') or []) | join('\n\n'))
     or '_No 311 departures right now_'
   }}
 
-
   ---
 
-
   ### Macleay St Opp Rockwall Cres
-
   → Central · ~90 m from home
 
-
   {{
-    ((state_attr('sensor.route_311_opp_rockwall_cres', 'eta_lines') or [])
-    | join('\n\n'))
+    ((state_attr(opp, 'eta_lines') or []) | join('\n\n'))
     or '_No 311 departures right now_'
   }}
