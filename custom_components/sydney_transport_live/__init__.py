@@ -63,7 +63,10 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: SydneyTransportConfigEntry
 ) -> bool:
     """Set up Sydney Transport Live from a config entry."""
-    _async_migrate_stop_code_unique_ids(hass, entry)
+    try:
+        _async_migrate_stop_code_unique_ids(hass, entry)
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Stop-code unique_id migration skipped: %s", err)
 
     session = async_get_clientsession(hass)
     api_key: str = entry.data[CONF_API_KEY]
@@ -200,8 +203,19 @@ async def async_setup_entry(
         update_interval_seconds=int(departure_seconds),
     )
 
-    await position_coordinator.async_config_entry_first_refresh()
-    await departure_coordinator.async_config_entry_first_refresh()
+    # Use async_refresh (not async_config_entry_first_refresh) so a temporary
+    # TfNSW failure — especially the large vehiclepos download — cannot abort
+    # setup and leave sensors stuck as restored/unavailable shells.
+    await departure_coordinator.async_refresh()
+    await position_coordinator.async_refresh()
+    if not departure_coordinator.last_update_success:
+        _LOGGER.warning(
+            "Initial departure fetch failed; sensors will retry on the next poll"
+        )
+    if not position_coordinator.last_update_success:
+        _LOGGER.warning(
+            "Initial vehicle position fetch failed; map pins will retry on the next poll"
+        )
 
     entry.runtime_data = SydneyTransportRuntimeData(
         client=client,

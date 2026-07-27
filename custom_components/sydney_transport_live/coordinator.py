@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.update_coordinator import (
-    TimestampDataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util.dt import utcnow
 
 from .api.client import TfnswApiClient
 from .api.departure import parse_departures
@@ -24,8 +22,10 @@ from .models import Arrival, RouteConfig, StopConfig, Vehicle
 _LOGGER = logging.getLogger(__name__)
 
 
-class VehiclePositionCoordinator(TimestampDataUpdateCoordinator[dict[str, Vehicle]]):
+class VehiclePositionCoordinator(DataUpdateCoordinator[dict[str, Vehicle]]):
     """Poll GTFS-R vehicle positions and filter to the configured route."""
+
+    last_update_success_time: datetime | None = None
 
     def __init__(
         self,
@@ -108,7 +108,9 @@ class VehiclePositionCoordinator(TimestampDataUpdateCoordinator[dict[str, Vehicl
         fresh = parse_vehicle_positions(
             payload, route=self.route, static_store=self.static_store
         )
-        return self._apply_miss_ttl(fresh)
+        result = self._apply_miss_ttl(fresh)
+        self.last_update_success_time = utcnow()
+        return result
 
     def _apply_miss_ttl(self, fresh: dict[str, Vehicle]) -> dict[str, Vehicle]:
         """Keep recently-seen buses for a few missed polls to reduce flicker."""
@@ -144,8 +146,10 @@ class VehiclePositionCoordinator(TimestampDataUpdateCoordinator[dict[str, Vehicl
         return retained
 
 
-class DepartureCoordinator(TimestampDataUpdateCoordinator[dict[str, list[Arrival]]]):
+class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
     """Poll Trip Planner departure boards for one or more stops."""
+
+    last_update_success_time: datetime | None = None
 
     def __init__(
         self,
@@ -229,4 +233,5 @@ class DepartureCoordinator(TimestampDataUpdateCoordinator[dict[str, list[Arrival
 
         if not results and errors:
             raise UpdateFailed(f"Error fetching departures: {'; '.join(errors)}")
+        self.last_update_success_time = utcnow()
         return results
