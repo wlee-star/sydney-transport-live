@@ -202,8 +202,9 @@ class DepartureCoordinator(DataUpdateCoordinator[dict[str, list[Arrival]]]):
                 try:
                     payload = await self.client.async_get_departures(stop_ref)
                     parsed = parse_departures(payload, route=self.route)
-                    if parsed or payload.get("stopEvents"):
-                        # Keep first successful board (even if no 311 matched).
+                    if parsed:
+                        # Only stop once a board actually contained the route;
+                        # an empty board may just mean the wrong stop ref.
                         break
                 except TfnswAuthError as err:
                     from homeassistant.exceptions import ConfigEntryAuthFailed

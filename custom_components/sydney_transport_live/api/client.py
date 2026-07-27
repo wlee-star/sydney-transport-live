@@ -166,10 +166,11 @@ class TfnswApiClient:
             "itdDate": now.strftime("%Y%m%d"),
             "itdTime": now.strftime("%H%M"),
             # Bus only (MOT 5) — drop train/ferry/light rail noise.
+            # EFA ignores the value of exclMOT_*: a mode is excluded whenever
+            # its parameter is present, so exclMOT_5 must be omitted entirely.
             "excludedMeans": "checkbox",
             "exclMOT_1": "1",
             "exclMOT_4": "1",
-            "exclMOT_5": "0",
             "exclMOT_7": "1",
             "exclMOT_9": "1",
             "exclMOT_11": "1",
