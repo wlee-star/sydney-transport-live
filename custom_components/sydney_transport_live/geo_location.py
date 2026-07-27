@@ -3,9 +3,9 @@
 Uses ``geo_location_sources`` so the dashboard always shows every live bus
 without hard-coding device_tracker entity IDs (those go stale when trips end).
 
-Each bus is tagged with a direction-specific *source* so the native Map card
-can render the default ``311`` label with a blue ring (City) or grey ring
-(Central) — no custom pin images.
+City-bound buses use the legacy ``sydney_transport_live`` source (blue ring).
+Central-bound buses use ``sydney_transport_live_central`` (grey ring via
+card-mod).  No custom pin images — the default ``311`` label is kept.
 """
 
 from __future__ import annotations
@@ -36,6 +36,12 @@ from .helpers.filtering import destination_kind
 from .models import RouteConfig, Vehicle
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _source_for_vehicle(vehicle: Vehicle | None) -> str:
+    if vehicle is not None and destination_kind(vehicle.destination) == "central":
+        return SOURCE_CENTRAL
+    return SOURCE_CITY
 
 
 async def async_setup_entry(
@@ -100,6 +106,10 @@ class SydneyBusGeoLocation(GeolocationEvent):
         # Spaced digits so HA map initials render as "311" (not "3").
         self._attr_name = " ".join(route.short_name)
         self._attr_force_update = True
+        initial = (
+            coordinator.data.get(vehicle_id) if coordinator.data else None
+        )
+        self._attr_source = _source_for_vehicle(initial)
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to coordinator updates."""
@@ -108,8 +118,18 @@ class SydneyBusGeoLocation(GeolocationEvent):
             self.coordinator.async_add_listener(self._handle_coordinator_update)
         )
 
+    def _update_source(self, vehicle: Vehicle | None) -> None:
+        """Keep _attr_source in sync; invalidate HA's cached source property."""
+        new_source = _source_for_vehicle(vehicle)
+        if self._attr_source == new_source:
+            return
+        self._attr_source = new_source
+        # GeolocationEvent.source is a @cached_property — bust the cache.
+        self.__dict__.pop("source", None)
+
     @callback
     def _handle_coordinator_update(self) -> None:
+        self._update_source(self._vehicle)
         self.async_write_ha_state()
 
     @property
@@ -117,16 +137,6 @@ class SydneyBusGeoLocation(GeolocationEvent):
         if not self.coordinator.data:
             return None
         return self.coordinator.data.get(self._vehicle_id)
-
-    @property
-    def source(self) -> str:
-        """Map-card source used to pick ring colour (City=blue, Central=grey)."""
-        vehicle = self._vehicle
-        if vehicle is None:
-            return SOURCE_CITY
-        if destination_kind(vehicle.destination) == "central":
-            return SOURCE_CENTRAL
-        return SOURCE_CITY
 
     @property
     def available(self) -> bool:

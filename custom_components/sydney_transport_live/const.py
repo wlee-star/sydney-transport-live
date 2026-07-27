@@ -108,11 +108,11 @@ PLATFORMS: Final[tuple[str, ...]] = (
     "geo_location",
 )
 
-# Source strings for Map card geo_location_sources (direction-coded rings).
-SOURCE_CITY: Final = f"{DOMAIN}_city"
+# City buses keep the legacy source so existing map cards still work.
+SOURCE_CITY: Final = DOMAIN
 SOURCE_CENTRAL: Final = f"{DOMAIN}_central"
 
-# Legacy alias — prefer SOURCE_CITY / SOURCE_CENTRAL on the map card.
+# Legacy alias — same as SOURCE_CITY.
 GEO_LOCATION_SOURCE: Final = DOMAIN
 
 LOGGER_NAME: Final = f"custom_components.{DOMAIN}"

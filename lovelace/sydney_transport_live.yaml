@@ -22,9 +22,10 @@ views:
           - entity: zone.macleay_st_home
             name: Home
         geo_location_sources:
-          # City first → native blue ring. Central second → grey via card-mod.
-          - source: sydney_transport_live_city
+          # City buses use the legacy source (works with existing map cards).
+          - source: sydney_transport_live
             focus: false
+          # Central buses — add this line for grey-ring Central services.
           - source: sydney_transport_live_central
             focus: false
         # Optional: card-mod (HACS). HA's 2nd-source colour is yellow by default;
